@@ -1,0 +1,309 @@
+---
+title: "Résumé semaine du 6 Février 2023"
+subtitle: "Accumulation 1 mois"
+author: "Gabriel B.Beaudet"
+date: "09/02/2023"
+output:
+  pdf_document
+---
+\newpage
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.pos = "H", out.extra = "")
+par(mar = c(4, 4, .1, .1))
+```
+
+```{r libraries, include=FALSE}
+library(sf)
+library(ggplot2)
+library(tidyverse)
+library(dplyr)
+library(kableExtra)
+
+```
+```{r load_data, include=FALSE}
+
+load("/Users/smokeyhandz/Desktop/UQO_etiage/R_proj/UQO_etiage_GitHub/GitHub_markdown_data/update_9_fev.RData")
+
+```
+
+**Maps du Québec des différentes combinaisons d'accumulation et de seuils**
+
+À partir des séries temporelles de débit interpolées de l’Atlas hydroclimatique (1970-2022), le SSI a été calculé pour 301 bassins versants du Québec méridional, soit principalement des bassins versants d’ordre 1 et d’ordre 2.
+ 
+Les séries temporelles de débit incluent les tronçons de cours d’eau sans influence ou avec une influence mineure des barrages.
+ 
+Dans un premier temps, le SSI a été calculé avec une période d’accumulation de 1 mois et nous avons identifié les événements de sécheresse selon les critères suivants : Une série continue de SSI négsatif dont au moins une valeur passe sous un seuil de -1.0. 
+ 
+Le coefficient de variation (CV) du nombre d’événement est calculé en prenant la moyenne et l’écart-type du nombre d’événements de sécheresse dans l’ensemble des tronçons d’un bassin versant. Le CV représente donc la variabilité spatiale dans le nombre d’événement au sein du bassin versant.
+
+```{r map_SSI_1, echo=FALSE, out.width="90%"}
+
+  ggplot(BV.plot)+
+    geom_sf(aes(geometry = GEOMETRY, fill = CV.n), size = .05)+
+    scale_fill_continuous(type = "viridis", breaks = c(0,.1,.2,.3,.4,.5), limits = c(0,.5))+
+  labs(title = "Coefficients de variations au seuil SSI < -1 et accumulation de 1 mois")
+
+```
+```{r maps_SSI_1_5, echo=FALSE,out.width="90%"}
+  ggplot(BV.plot.1.5)+
+    geom_sf(aes(geometry = GEOMETRY, fill = CV.n), size = .05)+
+    scale_fill_continuous(type = "viridis", breaks = c(0,.1,.2,.3,.4), limits = c(0,.5))+
+  labs(title = "Coefficients de variations au seuil SSI < -1.5 et accumulation de 1 mois")
+  
+```
+
+\newpage
+**Relations entre surfaces de drainage et coefficients de variations**
+
+L’histogramme est compilé à partir du CV du nombre d’événements pour chacun des 301 bassins versants du Québec méridional.
+ 
+Avec un seuil SSI < -1, le nombre d’événements de sécheresse augmente de manière linéaire avec le log10 de l’aire de drainage.
+ 
+Avec un seuil SSI < -1.5, la relation linéaire s’atténue grandement bien qu’on conserve une certaine tendance à un plus grand nombre d’événements dans les plus grands bassins.
+
+```{r CV, echo=FALSE, fig.show='hold', warning=FALSE, out.width="50%"}
+
+hist(DE.CV$CV.n, main = "Accumulation de 1 mois et seuil SSI < -1")
+ggplot(DE.CV)+
+  geom_point(aes( x = log10(d.max), y = CV.n))
+             
+hist(DE.CV.1.5$CV.n, main = "Accumulation de 1 mois et seuil SSI < -1.5")
+ggplot(DE.CV.1.5)+
+  geom_point(aes( x = log10(d.max), y = CV.n))
+
+```
+
+\newpage
+**CASE STUDY**
+
+Pour les trois cas d’étude, en passant de SSI < -1 à SSI < -1.5, on divise par 2 le nombre d’événements de sécheresse identifiés.
+ 
+Avec SSI< -1.5 sur la rivière Grands Méchins, on a en moyenne 22.3 événements en 52 ans, alors on a un événement tous les 2.4 ans.
+ 
+Avec SSI< -1.5 sur la rivière du Gouffre, on a en moyenne 14.19 événements en 52 an, alors on a un événement tous les 3.7 ans.
+
+##### Descriptions des évènements de 3 bassins versants différents
+
+* 0723 - Rivière Moisie (Côte-Nord Est): CV 0.16, d.area 18900
+* 0246 - Rivière des grands méchins (Gaspésie): CV 0.03, d.area 98.7
+* 0513 - Rivière du gouffre (Saint-Laurent Nord-Ouest): CV 0.08, d.area 1011
+
+**SEUIL SSI < -1**
+
+```{r cs_SSI_1, echo=FALSE, warning=FALSE, out.width="30%"}
+
+ggplot(cs.DE)+
+  geom_boxplot(aes(y=n , x = BV ))+
+  labs(title = "Nombre d'évènementt")
+
+ggplot(cs.DE)+
+  geom_boxplot(aes(y=severity , x = BV ))+
+  labs(title = "Sévérité")
+
+ggplot(cs.DE)+
+  geom_boxplot(aes(y=duration , x = BV ))+
+  labs(title = "Durée des évènements")
+
+cs.DE %>% group_by(BV) %>% summarise( mu= mean(n),sd = sd(n), cv =sd/mu) %>% 
+  kbl(caption = "Nombre d'évènements", digits = 2) %>% kable_classic(full_width = F) %>% 
+  kable_styling(latex_options = "hold_position")
+
+cs.DE %>% group_by(BV) %>% summarise( mu= mean(duration),sd = sd(duration), cv =sd/mu) %>% 
+  kbl(caption = "durée des évènements", digits = 2) %>% kable_classic(full_width = F) %>% 
+  kable_styling(latex_options = "hold_position")
+
+cs.DE %>% group_by(BV) %>% summarise( mu= mean(severity),sd = sd(severity), cv =sd/mu) %>% 
+  kbl(caption = "sévérité des évènements", digits = 2) %>% kable_classic(full_width = F) %>% 
+  kable_styling(latex_options = "hold_position")
+
+```
+
+\newpage
+**SEUIL SSI < -1.5**
+
+```{r cs_SSI_1_5, echo=FALSE, warning=FALSE, out.width="30%"}
+
+ggplot(cs.DE.1.5)+
+  geom_boxplot(aes(y=n , x = BV ))+
+  labs(title = "Nombre d'évènements")
+
+ggplot(cs.DE.1.5)+
+  geom_boxplot(aes(y=severity , x = BV ))+
+  labs(title = "Sévérité")
+
+ggplot(cs.DE.1.5)+
+  geom_boxplot(aes(y=duration , x = BV ))+
+  labs(title = "Durée des évènements")
+
+cs.DE.1.5 %>% group_by(BV) %>% summarise( mu= mean(n),sd = sd(n), cv =sd/mu) %>% 
+  kbl(caption = "Nombre d'évènements", digits = 2) %>% kable_classic(full_width = F) %>% 
+  kable_styling(latex_options = "hold_position")
+
+cs.DE.1.5 %>% group_by(BV) %>% summarise( mu= mean(duration),sd = sd(duration), cv =sd/mu) %>% 
+  kbl(caption = "durée des évènements", digits = 2) %>% kable_classic(full_width = F) %>% 
+  kable_styling(latex_options = "hold_position")
+
+cs.DE.1.5 %>% group_by(BV) %>% summarise( mu= mean(severity),sd = sd(severity), cv =sd/mu) %>% 
+  kbl(caption = "sévérité des évènements", digits = 2) %>% kable_classic(full_width = F) %>% 
+  kable_styling(latex_options = "hold_position")
+
+```
+
+\newpage
+**Proportion d'évènements estivaux - juillet à septembre**
+
+```{r code_added, include=FALSE}
+for(i in 1:nrow(cs.DE)){
+  cs.DE$daterange[i] <- list(seq(as.Date(cs.DE$start[i]), as.Date(cs.DE$end[i]), by = "month"))
+}
+
+for(i in 1:nrow(cs.DE)){
+  cs.DE$overlap[i] <- any(grepl("-07-|-08-|-09-", cs.DE$daterange[[i]] ))
+}
+```
+
+**SEUIL SSI < -1**
+
+```{r ee_SSI_1, echo=FALSE, message=FALSE, warning=FALSE}
+
+cs.DE %>% group_by(BV,id) %>% summarise( OL = sum(overlap), n = length(overlap), p = sum(OL)/n) %>% 
+  group_by(BV) %>% summarise( mean(OL), sd (OL), mean(p), sd(p), mean(n), sd(n)) %>% 
+  kbl(caption = "Moyennes, écart-types et proportions du nombre d'évènements estivaux", digits = 2) %>% 
+  kable_classic(full_width = F, position = "left") %>% 
+  kable_styling(latex_options = "hold_position")
+```
+
+OL = nombre d'évènement estivaux, p = proportion par rapport au total d'évènement, n = nombre total d'évènement
+
+**SEUIL SSI < -1.5**
+
+```{r ee_SSI_1_5, echo=FALSE, message=FALSE, warning=FALSE}
+
+cs.DE.1.5 %>% group_by(BV,id) %>% summarise( OL = sum(overlap), n = length(overlap), p = sum(OL)/n) %>% 
+  group_by(BV) %>% summarise( mean(OL), sd (OL), mean(p), sd(p), mean(n), sd(n)) %>% 
+  kbl(caption = "Moyennes, écart-types et proportions du nombre d'évènements estivaux", digits = 2) %>% 
+  kable_classic(full_width = F, position = "left") %>% 
+  kable_styling(latex_options = "hold_position")
+```
+
+OL = nombre d'évènement estivaux, p = proportion par rapport au total d'évènement, n = nombre total d'évènement
+
+
+**Proportion d'évènements estivaux - mai à octobre**
+
+```{r added_code_2, include=FALSE}
+
+for(i in 1:nrow(cs.DE)){
+  cs.DE$overlap[i] <- any(grepl("-05-|-06-|-07-|-08-|-09-|-10-", cs.DE$daterange[[i]] ))
+}
+
+for(i in 1:nrow(cs.DE.1.5)){
+  cs.DE.1.5$overlap[i] <- any(grepl("-05-|-06-|-07-|-08-|-09-|-10-", cs.DE.1.5$daterange[[i]] ))
+}
+
+```
+
+
+**SEUIL SSI < -1**
+
+```{r ee_SSI_1_2, echo=FALSE, message=FALSE, warning=FALSE}
+
+cs.DE %>% group_by(BV,id) %>% summarise( OL = sum(overlap), n = length(overlap), p = sum(OL)/n) %>% 
+  group_by(BV) %>% summarise( mean(OL), sd (OL), mean(p), sd(p), mean(n), sd(n)) %>% 
+  kbl(caption = "Moyennes, écart-types et proportions du nombre d'évènements estivaux", digits = 2) %>% 
+  kable_classic(full_width = F, position = "left") %>% 
+  kable_styling(latex_options = "hold_position")
+```
+
+OL = nombre d'évènement estivaux, p = proportion par rapport au total d'évènement, n = nombre total d'évènement
+
+**SEUIL SSI < -1.5**
+
+```{r ee_SSI_1_5_2, echo=FALSE, message=FALSE, warning=FALSE}
+
+cs.DE.1.5 %>% group_by(BV,id) %>% summarise( OL = sum(overlap), n = length(overlap), p = sum(OL)/n) %>% 
+  group_by(BV) %>% summarise( mean(OL), sd (OL), mean(p), sd(p), mean(n), sd(n)) %>% 
+  kbl(caption = "Moyennes, écart-types et proportions du nombre d'évènements estivaux", digits = 2) %>% 
+  kable_classic(full_width = F, position = "left") %>% 
+  kable_styling(latex_options = "hold_position")
+```
+
+OL = nombre d'évènement estivaux, p = proportion par rapport au total d'évènement, n = nombre total d'évènement
+
+\newpage
+**Visualisation des overlaps**
+
+On voit bien qu'à SSI < -1 , il y probablement trop d'évènements. C'est plus ou moins clair ici, mais je peux créer ces mêmes figures en version interactive où je peux faire un zoom sur les différentes années, et il n'y a pas vraiment d'évènement qui sont séparé par un seul mois de SSI positif (Une question que tu te posais). Le seul problème c'est que ça devient très chaotique pour les BV qui ont beaucoup de tronçons.
+
+* Un encadré = un tronçon
+* Les chiffres sur l'axe Y sont les surfaces de drainage des tronçons. Les tronçons sont en ordre de surface de drainage.
+* Les chiffres sur les évènements sont les durées
+* La couleur de l'évènement représente son SSI minimal: rouge pour SSI < -2, orange pour SSI < -1.5 et jaune pour SSI <-1
+
+```{r vistime_0246, echo=FALSE}
+
+library(vistime)
+
+cs.DE$col[cs.DE$cat == "M"] <- "yellow"
+cs.DE$col[cs.DE$cat == "S"] <- "orange"
+cs.DE$col[cs.DE$cat == "E"] <- "red"
+
+cs.DE.1.5$col[cs.DE.1.5$cat == "M"] <- "yellow"
+cs.DE.1.5$col[cs.DE.1.5$cat == "S"] <- "orange"
+cs.DE.1.5$col[cs.DE.1.5$cat == "E"] <- "red"
+
+gg_vistime((cs.DE %>% filter(BV == "0246")), col.event = "duration", col.color = "col", 
+           col.start = "start", col.end = "end", col.group = "d.area")+
+  labs(title = "BV #0246 - SSI < -1")
+
+gg_vistime((cs.DE.1.5 %>% filter(BV == "0246")), col.event = "duration", col.color = "col", 
+           col.start = "start", col.end = "end", col.group = "d.area")+
+  labs(title = "BV #0246 - SSI < -1.5")
+
+```
+
+```{r vistime_0513, echo=FALSE}
+
+gg_vistime((cs.DE %>% filter(BV == "0513") %>% arrange(desc(d.area))), col.event = "duration", col.color = "col", 
+           col.start = "start", col.end = "end", col.group = "d.area")+
+  labs(title = "BV #0513 - SSI < -1")
+
+gg_vistime((cs.DE.1.5 %>% filter(BV == "0513") %>% arrange(desc(d.area))), col.event = "duration", col.color = "col", 
+           col.start = "start", col.end = "end", col.group = "d.area")+
+  labs(title = "BV #0513 - SSI < -1.5")
+
+```
+
+\newpage
+**VISUALISATION ÉVÈNEMENTS ESTIVAUX SEULEMENT**
+
+On réduit de beaucoup le chaos si ont illustre seulement les évènements avec un overlap estival.
+
+```{r ee_vistime_0246, echo=FALSE}
+
+gg_vistime((cs.DE %>% filter(BV == "0246",overlap == T)), col.event = "duration", col.color = "col", 
+           col.start = "start", col.end = "end", col.group = "d.area")+
+  labs(title = "BV #0246 - SSI < -1")
+
+gg_vistime((cs.DE.1.5 %>% filter(BV == "0246",overlap == T)), col.event = "duration", col.color = "col", 
+           col.start = "start", col.end = "end", col.group = "d.area")+
+  labs(title = "BV #0246 - SSI < -1.5")
+
+```
+
+```{r ee_vistime_0513, echo=FALSE}
+
+gg_vistime((cs.DE %>% filter(BV == "0513", overlap == T) %>% arrange(desc(d.area))), col.event = "duration", col.color = "col", 
+           col.start = "start", col.end = "end", col.group = "d.area")+
+  labs(title = "BV #0513 - SSI < -1")
+
+gg_vistime((cs.DE.1.5 %>% filter(BV == "0513",overlap == T) %>% arrange(desc(d.area))), col.event = "duration", col.color = "col", 
+           col.start = "start", col.end = "end", col.group = "d.area")+
+  labs(title = "BV #0513 - SSI < -1.5")
+
+```
+
+
+
+
+
