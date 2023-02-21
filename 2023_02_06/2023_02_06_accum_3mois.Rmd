@@ -37,7 +37,7 @@ load("/Users/smokeyhandz/Desktop/UQO_etiage/R_proj/UQO_etiage_GitHub/GitHub_mark
 
 ```
 ```{r maps_SSI_1_5, echo=FALSE,out.width="90%"}
-  ggplot(BV.plot.1.5)+
+  ggplot(BV.plot.1.5)+ 
     geom_sf(aes(geometry = GEOMETRY, fill = CV.n), size = .05)+
     scale_fill_continuous(type = "viridis", breaks = c(0,.1,.2,.3,.4), limits = c(0,.5))+
   labs(title = "Coefficients de variations au seuil SSI < -1.5 et accumulation de 3 mois")

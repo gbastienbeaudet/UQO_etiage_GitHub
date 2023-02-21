@@ -1,0 +1,281 @@
+---
+title: "Résumé semaine du 13 février 2023"
+author: "gbbeaudet"
+date: "17/02/2023"
+output:
+  pdf_document
+---
+\newpage
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.pos = "H", out.extra = "")
+par(mar = c(4, 4, .1, .1))
+```
+
+```{r libraries, include=FALSE}
+library(sf)
+library(ggplot2)
+library(tidyverse)
+library(kableExtra)
+```
+
+```{r load_data, include=FALSE}
+load("/Users/smokeyhandz/Desktop/UQO_etiage/R_proj/UQO_etiage_GitHub/GitHub_markdown_data/17_fevrier.RData")
+```
+
+# ANALYSES EFFECTUÉES CETTE SEMAINE:
+
+1. Analyse du nombre de tronçons en sécheresse, par mois, par bassin versant.
+2. Comparaisons entre le tronçon le plus en aval du bassin et ses autres tronçons.
+3. Analyse des limites spatiales des bassins versants tronqués et problématiques
+4. Limitations problématiques dans les données de l'atlas hydroclimatique.
+5. Graphiques additionnels 
+
+Note: Suite aux résultats de la semaine passée, le *seuil SSI des sécheresses* est desormais établit à **-1.5** et nous éliminons la distinction des évènements de sécheresse "estivaux".
+
+________________________________________________________________________________________________________________________
+
+
+
+## 1. Analyse du nombre de tronçons en sécheresse, par mois, par bassin versant.
+
+Buts: 
+
+* Analyser la dispersion des sécheresses au sein des BVs, 
+* Établir si la dipersion se généralise dans le BV a partir d'un certain seuil de nombre de tronçons.
+
+
+**Figure 1.** Dispersion des sécheresses sur une sélection aléatoire de 12 BVs
+
+La proportion du nombre de tronçons en sécheresse (axe Y) a été calculée en divisant le nombre de mois avec un SSI <= -1.5 par le nombre total de tronçons du BV, pour chaque mois des 52 années disponibles dans le portrait de l'atlas hydroclimatique (1970-2022), pour chacun des 301 BVs disponibles.
+
+
+```{r graph proportions sécheresses, echo=FALSE,out.width="30%"}
+
+for(bv in sample(n.drought$BV,12, replace = T)){
+  plot(as.Date(n.drought$timestamp[n.drought$BV==bv]),
+       n.drought$p.drought[n.drought$BV==bv],
+       type = "l",
+       xlab = "time", ylab = "proportion de tronçons en sécheresse", main = bv)
+  abline( h = .75, col = "red")
+  lines(as.Date(n.drought$timestamp[n.drought$BV==bv]),
+        (n.drought %>% group_by(timestamp) %>% summarise(p = mean(p.drought)))$p,
+        col = c("gray", alpha = .1), lty = 2)
+}
+
+```
+
+La ligne horizontale rouge représente la proportion arbitraire de 75% et la série temporelle grise est la moyenne des proportions de tous les BV.
+
+On remarque une distinction entre les BVs ayant peu de tronçons où plusieurs mois ont une proportion de 100% et les BVs ayant beaucoup de tronçons où les proportions sont beaucoup plus variables.
+
+\
+
+##### Distribution du nombre de tronçons par BV
+
+- 75 des 301 BV (25%) ont un seul tronçon, 
+- 184 ont 10 tronçons et moins (61%) donc 114 en ont plus de 10. 
+- 51 BV (17%) ont plus de 50 tronçons. 
+- 25 BV (8%) ont plus de 100 tronçons.
+
+**Figure 2.** Histogrammes du nombre de tronçons par BV
+
+```{r hist troncon,  echo=FALSE,out.width="50%"}
+hist((dd %>% count(BV))$n, breaks = 50, main = "Toute la distribution")
+hist((dd %>% count(BV))$n, xlim = c(1,10), breaks = 2500, main = "Seulement les BV en dessous de 10 tronçons")
+```
+
+\
+
+Si l'on voudrait sélectionner un seuil de nombre de tronçon à partir duquel la dispersion des sécheresse semble se généralisée, et donc un seuil au dessus duquel il faudrait potentiellement subdivisé le BV, le nombre de BV avec moins de 100 tronçons (25) serait un nombre raisonnable et la figure suivante montre que **la dispersion des sécheresses est toujours assez bien généralisée**. Un choix plus sécuritaire serait un seuil de 50 tronçons.
+
+\newpage
+
+**Figure 3.** Dispersion des sécheresses sur une sélection aléatoire de 12 BVs *ayant moins de 100 tronçons*
+
+```{r graph proportions sécheresses moins de 100, echo=FALSE,out.width="30%"}
+
+for(bv in sample(n.drought$BV[n.drought$n.sect<100],12, replace = T)){
+  plot(as.Date(n.drought$timestamp[n.drought$BV==bv]),
+       n.drought$p.drought[n.drought$BV==bv],
+       type = "l",
+       xlab = "time", ylab = "proportion de tronçons en sécheresse", main = bv)
+  abline( h = .75, col = "red")
+  lines(as.Date(n.drought$timestamp[n.drought$BV==bv]),
+        (n.drought %>% group_by(timestamp) %>% summarise(p = mean(p.drought)))$p,
+        col = c("gray", alpha = .1), lty = 2)
+}
+
+```
+
+On remarque tout de même une relation entre le nombre de mois au dessus du seuil de 75% du nombre de tronçons en sécheresse et le nombre total de tronçons du BV à la figure 4 (R = -0.46)
+
+**Figure 4.** Relation entre le nombre de mois où 75% et plus des tronçons d'un bassin versant sont en sécheresse et le nombre total de tronçons du bassin versant.
+
+```{r message=FALSE, warning=FALSE, echo=FALSE, out.width="50%"}
+test <- n.drought
+test <- left_join(n.drought %>% filter(p.drought>=.75) %>% summarise (n = n()), 
+                  n.drought %>% select(BV,n.sect) %>% group_by(BV) %>% summarise(n.sect = mean(n.sect)))
+plot(test$n~test$n.sect,
+     ylab= "nombre de mois au dessus du seuil de 75%",
+     xlab = "nombre de tronçons du BV")
+
+```
+
+\newpage
+
+## 2. Comparaisons entre le tronçon le plus en aval du bassin et ses autres tronçons.
+
+2.1 Est-ce que les évènements de sécheresse du tronçon en aval sont généralisés à tout le bassin versant ?
+
+**Méthode:** Évaluer le nombre de tronçons en sécheresse au même moment que le tronçon le plus en aval.
+
+\
+
+**Figure 5.** Comparaison des évènements sécheresse du tronçon le plus en aval d'un BV avec ses autres tronçons, sur une sélection aléatoire de 12 BV.
+
+L'axe Y présente la proportion de tronçons qui sont en sécheresse pour chacun des mois où le tronçon le plus en aval du BV est en sécheresse (ie. SSI <= -1.5). La couleur de la série temporelle indique si la sévérité du SSI du tronçon en aval pour le mois concerné dichotomisé en deux niveaux, où la couleur mauve indique un SSI entre -1.5 et -2, et la couleur jaune indique un SSI <= -2.
+
+```{r aval vs BV,echo=FALSE,out.width="30%"}
+
+for(bv in sample(final.df$BV[final.df$n.sect>1],12, replace = T)){
+    print(
+      ggplot(final.df %>% filter (BV == bv))+
+        geom_line(aes(x = as.Date(timestamp), y = p, col = col)) +
+        scale_color_continuous(type = "viridis") + 
+        labs(x = "", y = "", title = bv) + theme (legend.position = "none")
+    )
+  }
+```
+
+
+2.2 Est-ce que les évènements de sécheresse dans un BV se reflète dans le tronçon le plus en aval ? 
+
+**Méthode:** Évaluer le nombre d’événements non captés par le tronçon le plus en aval. En d'autres mots, quelle est la proportion de tronçons en sécheresse lorsque le tronçon en aval ne l'est pas ?
+
+\
+
+**Figure 6.** Comparaison de l'occurence des évènements sécheresse du BV avec son tronçon le plus en aval, sur une sélection aléatoire de 12 BV.
+
+L'axe Y présente la proportion de tronçons qui sont en sécheresse lorsque le tronçon le plus en aval du BV **ne l'est pas**. La couleur de la série temporelle indique la sévérité moyenne des SSI des tronçons en sécheresse au mois concerné dichotomisé en deux niveaux, où la couleur mauve indique un SSI entre -1.5 et -2, et la couleur jaune indique un SSI <= -2.
+
+**À noter:** Ici, une proportion de "0" ne signifie pas nécessairement l'absence d'évènement. Elle peut aussi signifier qu'un évènement présent dans le BV est présent au même moment dans le tronçon le plus en aval.
+
+```{r BV vs aval, echo=FALSE, warning=FALSE, out.width="30%"}
+
+for(bv in sample(final.df2$BV[final.df2$n.sect>1],12, replace = T)){
+  print(
+    ggplot(final.df2 %>% filter (BV == bv))+
+      geom_line(aes(x = as.Date(timestamp), y = p, col = col)) +
+      scale_color_continuous(type = "viridis") + 
+      labs(x = "", y = "", title = bv) + theme (legend.position = "none")
+  )
+}
+
+```
+
+
+\newpage 
+
+## 3. Analyse des limites spatiales des bassins versants tronqués et problématiques
+
+Certains des bassins versants du portrait de l'atlas hydroclimatique du CEHQ sont tronqués dues à des limites administratives (bassins versants débordants en Ontario où aux États-Unis). Cette section identifie ces BV, notamment ceux des régions hydroclimatiques 01 et 03(frontières des USA) ainsi que 04 et 08 (frontière de l'Ontario). 
+
+Les BV de la région 08 pourraient être problématiques puisque les tronçons disponibles ne couvrent que la moitié de la région hydroclimatique. Le BV de la rivière des Outaouais (0430) est particulièrement problématique due à ses délimitations contradictoires, ce qui sera discuté plus loin.
+
+```{r loading map data, include=FALSE}
+BV.pol <- st_read("/Users/smokeyhandz/Desktop/GIS_BV_QC/CE_bassins_multi_sqlite.sqlite")
+Radmin.pol <- st_read("/Users/smokeyhandz/Desktop/GIS_BV_QC/Index_GRHQ/Index_GRHQ.shp")
+sections.pol <- st_read("/Users/smokeyhandz/Desktop/GIS_BV_QC/atlashydroclimatique_2022_SHP/AtlasHydroclimatique_2022.shp")
+
+Radmin.pol$Bloc <- substr(Radmin.pol$Bloc,1,2)
+sections.pol$BV <- substr(sections.pol$BVPRIMAIRE,1,4)
+
+id.list <- (df %>% distinct(id))$id
+
+##### Variabilité du nombre d'évènement #####
+DE.CV <- DE.df %>% count(BV,id) %>% group_by(BV) %>% summarise (sd.n =  sd(n),
+                                                                        mu.n = mean(n),
+                                                                        CV.n = sd(n)/mean(n))
+DE.CV <- left_join(DE.CV, df %>% group_by(BV) %>% summarise(d.max = max(d.area)))
+
+DE.CV.1.5 <- DE.df.1.5 %>% filter(lowest.SSI<=-1.5) %>%  count(BV,id) %>% 
+  group_by(BV) %>% summarise (sd.n =  sd(n),
+                              mu.n = mean(n),
+                              CV.n = sd(n)/mean(n))
+DE.CV.1.5 <- left_join(DE.CV.1.5, df %>% group_by(BV) %>% summarise(d.max = max(d.area)))
+
+
+BV.plot <- left_join(DE.CV, BV.pol %>% select(BV = no_cours_d_eau, GEOMETRY))
+BV.plot <- left_join(BV.pol %>% select(BV = no_cours_d_eau, GEOMETRY), DE.CV)
+BV.plot <- na.omit(BV.plot)
+
+sections.pol$ra <- substr(sections.pol$BV,1,2)
+ra04 <- sections.pol %>% filter(ra == "04")
+
+```
+
+\
+
+**Figure 7.** Carte des 9665 tronçons disponibles dans l'outil "portrait" de l'atlas hydroclimatique du CEHQ.
+
+Les délimitations représentes les limites des bassins versants telles qu'établient par le CEHQ et la couleur définie la région hydroclimatique.
+```{r map tronçons utilisés, echo=FALSE, warning=FALSE}
+print(
+  ggplot()+
+    geom_sf(data = BV.plot, aes(geometry = GEOMETRY), lwd = 1)+
+    geom_sf(data = sections.pol %>% filter(TRONCON %in% id.list), aes(geometry = geometry, col = ra))+
+    theme(legend.position = "none")
+
+)
+```
+
+\newpage 
+
+**Figure 8.** Carte des tronçons cachées de l'outil "portrait" de l'atlas hydroclimatique du CEHQ.
+
+Les données pour ces tronçons ne sont pas disponibles sur l'atlas pour deux raisons: leur surface de drainage est plus faible que 50 km2, ou bien ils sont hors des limites administratives. Pour ces derniers, j'ai l'impression que nous pourrions les demandées auprès du CEHQ pour mieux représenter leur BV respectif.
+
+```{r map tronçons cachés, echo=FALSE, warning=FALSE}
+print(
+  ggplot()+
+    geom_sf(data = BV.plot, aes(geometry = GEOMETRY))+
+    geom_sf(data = sections.pol %>% filter(MASQUE == "HIDDEN"), aes(geometry = geometry, col = ra))+
+    theme(legend.position = "none")
+)
+```
+
+/
+
+### Voici maintenant la problématique du BV de la rivière des Outaouais.
+
+Le BV nommée 0430 correspond à différents endroits dans les différents jeux de données du CEHQ. D'une part, il identifie un bassin versant primaire dont la délimitation est représentée par la figure 9. Celui-ci est divisé en de nombreux bassins versants de niveau 2 qui ont leur propre identifiant, représenté par les différentes couleurs. D'une autre part, l'identifiant 0430 est aussi utilisé pour de nombreux BV de niveau 2 et 3, qui recouvrent ensemble les tronçons de couleurs noires sur la figure 9. On voit que leur répartition est un peu étrange.
+
+**Figure 9.** Carte des tronçons de la région hydroclimatique 04.
+```{r map BV 0430, echo=FALSE, warning=FALSE}
+print(
+  ggplot()+
+    geom_sf(data = BV.plot %>% filter (BV == "0430"), aes(geometry = GEOMETRY))+
+    geom_sf(data = ra04 %>% filter(TRONCON %in% id.list), aes(geometry = geometry, col = BV))+
+    geom_sf(data = ra04 %>% filter(BV =="0430"), aes(geometry = geometry), col = "black")+
+    theme(legend.position = "none")
+
+)
+```
+
+\newpage
+
+## 4. Limitations et problématiques dans les données de l'atlas hydroclimatique.
+
+* Les tronçons de 100 km2 et moins : 2973 des 9665 tronçons (31%) 
+* Les tronçons de la côte-nord : 2821 tronçons (29%), dont 790 plus petit que 100 km2
+* 4660 tronçons restants si on enlève ceux de la côte-nord et ceux qui qui sont plus petit que 100 km2 (48%)
+
+Après discussion, nous décidons de garder tous les tronçons malgré tout.
+
+
+## 5. Étapes suivantes.
+
+* Récupérer les données des tronçons hors Québec.
+* Définir les évènements selon leur durée et sévérité cumulative.
+
+
