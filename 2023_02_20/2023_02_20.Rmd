@@ -1,0 +1,87 @@
+---
+title: "Résumé semaine du 20 février 2023"
+author: "gbbeaudet"
+date: "24/02/2023"
+output:
+  pdf_document
+---
+\newpage
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.pos = "H", out.extra = "")
+par(mar = c(4, 4, .1, .1))
+```
+
+```{r libraries, include=FALSE}
+library(sf)
+library(ggplot2)
+library(tidyverse)
+library(ivs)
+library(kableExtra)
+```
+
+```{r load_data, include=FALSE}
+
+```
+
+# ANALYSES EFFECTUÉES CETTE SEMAINE:
+
+Pas énormément d'analyses graphiques cette semaine.
+
+1. Compilation d'un nouveau jeu de donnée avec des identifiants unique pour chaque évènement de chaque BV, avec leur sévérité combinée et leur durée.
+2. Identification d'erreurs et problèmes dans les données de l'atlas.
+3. Récupération des données des tronçons hors Québec: Pas encore inclues dans le jeu de donnée du point 1.
+
+________________________________________________________________________________________________________________________
+
+##### 1. Compilation du nouveau jeu de données
+
+Tout vas bien ici de manière générale. Par contre, identification d'évènements de longueures irréalistes qui viennent insérer beaucoup d'erreurs (Plus d'info au point 2). À l'exception de ces évènements, les autres semblent bien correspondrent entre eux:
+
+**Figure X.** Overlap des évènements  de sécheresses des BVs X, X et X
+
+```{r}
+
+```
+
+**Figure X.** Exemple des problèmes causés par un évènement de longueur irréaliste
+
+```{r}
+
+```
+
+
+Prochaine Étape: Régler ces erreurs puis faire correspondre les identifiants des évènements entre les tous les BVs à l'échelle du Québec.
+
+\
+
+##### 2. Identification d'erreurs et problèmes dans les données de l'atlas.
+
+Les évènements de très longues durées (dans les eaux de 30 mois et plus) viennent principalement de 3 régions hydrographiques:
+
+* 04 - Outaouais et Montréal
+* 06 - Saguenay
+* 07 - Côte-Nord
+
+La raison de ces longueurs irréalistes est une déviation prononcée apr rapport à l'abscisse 0 pour des périodes couvrant plusieurs années.
+
+D’abord, il n’y a pas énormément de BV qui montre cette variation, et lorsqu’elle est présente, c’est généralement la majorité des tronçons. Donc il n’y a pas vraiment de distinction avec la superficie de drainage du tronçons. Il ne semble pas avoir de distinction avec la superficie du BV non plus.
+
+La période problématique n’est pas toujours la même Par contre, elle est généralement la même au sein d’une région hydrographique entière. Il y a un pattern distinctif dans tous les BV de la région 07, la 06, et la 04. 07 est la côte-nord dont les données sont incertaines selon le CEHQ, 04 contient la rivière des Outaouais qui est diviser un peu étrangement, et 06 est le Saguenay qui n’a normalement rien de vraiment problématique. *Après discussion, on réalise la présence de barrages importants dans des BVs où l'atlas à qualifié de "non influencé par un barrage", notamment la rivière au Outardes (#0710), sur laquelle 4 importants barrages de Hydro-Québec se trouvent.* Voir les figures suivantes. Il reste à voir si les autres déviations ont aussi des barrages dans leur BV respectif, et sinon de comprendre d'où elles proviennent.
+
+**Figure X.** Série temporelle de SSI du BV #0710 - Rivière aux outardes
+
+**Figure X.** Série temporelle des débits du BV #0710 - Rivière aux outardes
+
+```{r}
+
+```
+
+
+Une autre possibilité est la suivante, tirée d'un courriel envoyé à Audrey concernant la série temporelle ci-haut:
+
+> Ces patterns causent problèmes parce que ça donne des évènements de longueurs impossibles et ça vient booster la variabilité des évènements dans le BV. Ça cache aussi plusieurs plus petits évènements qui ressortirait si ont recentrait les grandes déviations alentour de zéro. Ça cause aussi problème quand vient le temps d’overlapper les évènements entre les tronçons pour leurs donner un identifiant, parce que le gros évènement va venir englober plusieurs petits et tous les mettre sous le même identifiant.
+  Avec notre discussion de tout à l’heure je réalise quelque chose. Cette série temporelle ne respecte pas du tout les seuils de 3 SSI de -1.5, etc. On voit dans la série qu’il y a au moins 10 mois en dessous de -1.5 à la fin, et surement pas loin de 5 ans au dessus de 1. Alors là on a deux possibilités. Soit les débits de ces tronçons (possiblement ceux qui ont une trop grande surface de drainage) ont des distributions peu communes, donc le fitting d’une distribution théorique est mauvais et la transposition sur une loi normale aussi, ou bien la distribution que l’on a sélectionnée ne correspond pas très bien à ces tronçons, menant au même résultat. Ceci se confirme assez bien avec les exemples que j’ai regardé. 
+
+*Courriel de Gabriel à Audrey, le 23 février.*
+
+
