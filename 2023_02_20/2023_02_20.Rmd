@@ -17,10 +17,12 @@ library(ggplot2)
 library(tidyverse)
 library(ivs)
 library(kableExtra)
+library(vistime)
 ```
 
 ```{r load_data, include=FALSE}
-
+df <- read.csv("/Users/smokeyhandz/Desktop/UQO_etiage/R_proj/UQO_etiage_GitHub/GitHub_markdown_data/resume_20feb.csv")
+events.df <- read.csv("/Users/smokeyhandz/Desktop/UQO_etiage/R_proj/UQO_etiage_GitHub/GitHub_markdown_data/events_df.csv")
 ```
 
 # ANALYSES EFFECTUÉES CETTE SEMAINE:
@@ -35,18 +37,38 @@ ________________________________________________________________________________
 
 ##### 1. Compilation du nouveau jeu de données
 
-Tout vas bien ici de manière générale. Par contre, identification d'évènements de longueures irréalistes qui viennent insérer beaucoup d'erreurs (Plus d'info au point 2). À l'exception de ces évènements, les autres semblent bien correspondrent entre eux:
+Tout vas bien ici de manière générale. Par contre, identification d'évènements de longueurs irréalistes qui viennent insérer beaucoup d'erreurs (Plus d'info au point 2). À l'exception de ces évènements, les autres semblent bien correspondrent entre eux:
 
-**Figure X.** Overlap des évènements  de sécheresses des BVs X, X et X
-
+**Figure 1.1** Overlap des évènements  de sécheresses du BVs 0520 - Rivière Champlain
 ```{r}
+gg_vistime(events.df %>% filter(BV == "0502"), 
+           col.start = "start", col.end = "end", col.group = "id",
+           col.event = "duration", col.color = "event.id")
 
 ```
 
-**Figure X.** Exemple des problèmes causés par un évènement de longueur irréaliste
+**Figure 1.2** Overlap des évènements  de sécheresses du BV 0220 - Rivière Rimouski
+```{r}
+gg_vistime(events.df %>% filter(BV == "0220"), 
+           col.start = "start", col.end = "end", col.group = "id",
+           col.event = "duration", col.color = "event.id")
+
+```
+
+**Figure 1.3** Overlap des évènements  de sécheresses du BV 0103 - Rivière du Grand Pabos
+```{r}
+gg_vistime(events.df %>% filter(BV == "0103"), 
+           col.start = "start", col.end = "end", col.group = "id",
+           col.event = "duration", col.color = "event.id")
+```
+
+
+**Figure 2.** Exemple des problèmes causés par un évènement de longueur irréaliste
 
 ```{r}
-
+gg_vistime((events.df %>% filter (BV == "0710"))[1:500,], 
+           col.start = "start", col.end = "end", col.group = "id",
+           col.event = "duration", col.color = "event.id")
 ```
 
 
@@ -56,7 +78,7 @@ Prochaine Étape: Régler ces erreurs puis faire correspondre les identifiants d
 
 ##### 2. Identification d'erreurs et problèmes dans les données de l'atlas.
 
-Les évènements de très longues durées (dans les eaux de 30 mois et plus) viennent principalement de 3 régions hydrographiques:
+Les évènements de très longues durées (~ 30 mois et plus) viennent principalement de 3 régions hydrographiques:
 
 * 04 - Outaouais et Montréal
 * 06 - Saguenay
@@ -66,13 +88,37 @@ La raison de ces longueurs irréalistes est une déviation prononcée apr rappor
 
 D’abord, il n’y a pas énormément de BV qui montre cette variation, et lorsqu’elle est présente, c’est généralement la majorité des tronçons. Donc il n’y a pas vraiment de distinction avec la superficie de drainage du tronçons. Il ne semble pas avoir de distinction avec la superficie du BV non plus.
 
-La période problématique n’est pas toujours la même Par contre, elle est généralement la même au sein d’une région hydrographique entière. Il y a un pattern distinctif dans tous les BV de la région 07, la 06, et la 04. 07 est la côte-nord dont les données sont incertaines selon le CEHQ, 04 contient la rivière des Outaouais qui est diviser un peu étrangement, et 06 est le Saguenay qui n’a normalement rien de vraiment problématique. *Après discussion, on réalise la présence de barrages importants dans des BVs où l'atlas à qualifié de "non influencé par un barrage", notamment la rivière au Outardes (#0710), sur laquelle 4 importants barrages de Hydro-Québec se trouvent.* Voir les figures suivantes. Il reste à voir si les autres déviations ont aussi des barrages dans leur BV respectif, et sinon de comprendre d'où elles proviennent.
+La période problématique n’est pas toujours la même Par contre, elle est généralement la même au sein d’une région hydrographique entière. Il y a un pattern distinctif dans tous les BV de la région 07, la 06, et la 04. 07 est la côte-nord dont les données sont incertaines selon le CEHQ, 04 contient la rivière des Outaouais qui est diviser un peu étrangement, et 06 est le Saguenay qui n’a normalement rien de vraiment problématique. **Après discussion, on réalise la présence de barrages importants dans des BVs qualifiés de "non influencé par un barrage", notamment la rivière au Outardes (#0710), sur laquelle 4 importants barrages de Hydro-Québec se trouvent.** Voir les figures suivantes. Il reste à voir si les autres déviations ont aussi des barrages dans leur BV respectif, et sinon de comprendre d'où elles proviennent.
 
-**Figure X.** Série temporelle de SSI du BV #0710 - Rivière aux outardes
 
-**Figure X.** Série temporelle des débits du BV #0710 - Rivière aux outardes
+**Figure 3.** Série temporelle de SSI du BV #0710 - Rivière aux outardes.
 
 ```{r}
+bv <-  710
+
+    n.sect <- mean( (df %>% filter(BV == bv))$n.sect)
+    d.area.BV <- round(max( (df %>% filter(BV == bv))$d.area),0)
+    BV.id <- max((df %>% filter(BV == bv))$BV)
+    
+ggplot(df %>% filter(BV == bv))+
+      geom_line(aes( x = timestamp, y = SSI.gam, group = id, col = d.area),alpha = .5)+
+      theme_classic() + scale_color_continuous(type = "viridis")+
+      labs( title = paste("BV:",BV.id,", ",n.sect," tronçons, ",d.area.BV," km2", sep = ""))
+```
+
+
+
+**Figure 4.** Série temporelle de SSI du BV #0710 - Rivière aux outardes, tronçon "CNDA00178".
+
+```{r}
+plot.ts((df %>% filter(id == "CNDA00178"))$SSI.gam)
+```
+
+
+**Figure 5.** Série temporelle des débits du BV #0710 - Rivière aux outardes
+
+```{r}
+plot.ts((df %>% filter(id == "CNDA00178"))$Q50)
 
 ```
 
@@ -84,4 +130,28 @@ Une autre possibilité est la suivante, tirée d'un courriel envoyé à Audrey c
 
 *Courriel de Gabriel à Audrey, le 23 février.*
 
+\
+
+Une note finale:
+Même dans les grands BVs, sérieusement, les séries des tronçons se ressemblent beaucoup. Par exemple, ci-dessous le # 0621, avec 208 tronçons. Il y a beaucoup de variabilité au niveau de la magnitude des SSIs, mais au niveau temporelle les évènements tombent bien ensemble. Je pense que donc que la prédiction que les évènements sévères sont généralisés au BV et que les plus faible sont plus dispersés fait du sens (Hypothèse 1, voir document google docs: "2023-02-16_hypothese-prediction.docx").
+
+**Figure 6.** Série temporelle des débits du BV #0621 - Rivière Mistassini
+
+```{r}
+
+bv <-  621
+
+    n.sect <- mean( (df %>% filter(BV == bv))$n.sect)
+    d.area.BV <- round(max( (df %>% filter(BV == bv))$d.area),0)
+    BV.id <- max((df %>% filter(BV == bv))$BV)
+    
+ggplot(df %>% filter(BV == bv))+
+      geom_line(aes( x = timestamp, y = SSI.gam, group = id, col = d.area),alpha = .5)+
+      theme_classic() + scale_color_continuous(type = "viridis")+
+      labs( title = paste("BV:",BV.id,", ",n.sect," tronçons, ",d.area.BV," km2", sep = ""))
+```
+
+________________________________________________________________________________________________________________________
+
+### Les séries temporelles des SSI et des débits de *tous* les BVs sont disponibles sous forme de PDF sur le portable personnel de Gabriel (~/R_proj/Drought_events/)
 
