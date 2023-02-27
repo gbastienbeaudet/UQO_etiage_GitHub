@@ -37,10 +37,14 @@ ________________________________________________________________________________
 
 ##### 1. Compilation du nouveau jeu de données
 
-Tout vas bien ici de manière générale. Par contre, identification d'évènements de longueurs irréalistes qui viennent insérer beaucoup d'erreurs (Plus d'info au point 2). À l'exception de ces évènements, les autres semblent bien correspondrent entre eux:
+\
+
+Tout vas bien ici de manière générale. Par contre, identification d'évènements de longueurs irréalistes qui viennent insérer beaucoup d'erreurs (Plus d'info au point 2). À l'exception de ces évènements, les autres semblent bien correspondrent entre eux. Voici quelques exemples:
+
+*Légende: Les chiffres sur les évènements représente leur durée en mois, les couleurs identiques identifient le même évènement dans des tronçons différents.*
 
 **Figure 1.1** Overlap des évènements  de sécheresses du BVs 0520 - Rivière Champlain
-```{r}
+```{r echo=FALSE}
 gg_vistime(events.df %>% filter(BV == "0502"), 
            col.start = "start", col.end = "end", col.group = "id",
            col.event = "duration", col.color = "event.id")
@@ -48,7 +52,7 @@ gg_vistime(events.df %>% filter(BV == "0502"),
 ```
 
 **Figure 1.2** Overlap des évènements  de sécheresses du BV 0220 - Rivière Rimouski
-```{r}
+```{r echo=FALSE}
 gg_vistime(events.df %>% filter(BV == "0220"), 
            col.start = "start", col.end = "end", col.group = "id",
            col.event = "duration", col.color = "event.id")
@@ -56,17 +60,8 @@ gg_vistime(events.df %>% filter(BV == "0220"),
 ```
 
 **Figure 1.3** Overlap des évènements  de sécheresses du BV 0103 - Rivière du Grand Pabos
-```{r}
+```{r echo=FALSE}
 gg_vistime(events.df %>% filter(BV == "0103"), 
-           col.start = "start", col.end = "end", col.group = "id",
-           col.event = "duration", col.color = "event.id")
-```
-
-
-**Figure 2.** Exemple des problèmes causés par un évènement de longueur irréaliste
-
-```{r}
-gg_vistime((events.df %>% filter (BV == "0710"))[1:500,], 
            col.start = "start", col.end = "end", col.group = "id",
            col.event = "duration", col.color = "event.id")
 ```
@@ -84,16 +79,16 @@ Les évènements de très longues durées (~ 30 mois et plus) viennent principal
 * 06 - Saguenay
 * 07 - Côte-Nord
 
-La raison de ces longueurs irréalistes est une déviation prononcée apr rapport à l'abscisse 0 pour des périodes couvrant plusieurs années.
+La raison de ces longueurs irréalistes est une déviation prononcée par rapport à l'abscisse 0 pour des périodes couvrant plusieurs années.
 
 D’abord, il n’y a pas énormément de BV qui montre cette variation, et lorsqu’elle est présente, c’est généralement la majorité des tronçons. Donc il n’y a pas vraiment de distinction avec la superficie de drainage du tronçons. Il ne semble pas avoir de distinction avec la superficie du BV non plus.
 
 La période problématique n’est pas toujours la même Par contre, elle est généralement la même au sein d’une région hydrographique entière. Il y a un pattern distinctif dans tous les BV de la région 07, la 06, et la 04. 07 est la côte-nord dont les données sont incertaines selon le CEHQ, 04 contient la rivière des Outaouais qui est diviser un peu étrangement, et 06 est le Saguenay qui n’a normalement rien de vraiment problématique. **Après discussion, on réalise la présence de barrages importants dans des BVs qualifiés de "non influencé par un barrage", notamment la rivière au Outardes (#0710), sur laquelle 4 importants barrages de Hydro-Québec se trouvent.** Voir les figures suivantes. Il reste à voir si les autres déviations ont aussi des barrages dans leur BV respectif, et sinon de comprendre d'où elles proviennent.
 
 
-**Figure 3.** Série temporelle de SSI du BV #0710 - Rivière aux outardes.
+**Figure 2.** Série temporelle de SSI du BV #0710 - Rivière aux outardes.
 
-```{r}
+```{r echo=FALSE, out.width="90%"}
 bv <-  710
 
     n.sect <- mean( (df %>% filter(BV == bv))$n.sect)
@@ -101,27 +96,31 @@ bv <-  710
     BV.id <- max((df %>% filter(BV == bv))$BV)
     
 ggplot(df %>% filter(BV == bv))+
-      geom_line(aes( x = timestamp, y = SSI.gam, group = id, col = d.area),alpha = .5)+
+      geom_line(aes( x = timestamp, y = SSI.gam, group = id, col = d.area),alpha = .1)+
       theme_classic() + scale_color_continuous(type = "viridis")+
       labs( title = paste("BV:",BV.id,", ",n.sect," tronçons, ",d.area.BV," km2", sep = ""))
 ```
 
+\
 
+La déviation est difficile à remarquer lorsque l'on regarde tous les tronçons à la fois, mais ressort beaucoup lorsque l'on regarde seulement un tronçon (figure 3). On retrouve aussi la déviation dans les débits (figure 4), ce qui laisse croire que l'erreur ne provient pas de la méthode de conversion en SSI.
 
-**Figure 4.** Série temporelle de SSI du BV #0710 - Rivière aux outardes, tronçon "CNDA00178".
+\newpage
 
-```{r}
-plot.ts((df %>% filter(id == "CNDA00178"))$SSI.gam)
+**Figure 3.** Série temporelle de SSI du BV #0710 - Rivière aux outardes, tronçon "CNDA00178".
+
+```{r echo=FALSE, out.width="80%"}
+plot.ts((df %>% filter(id == "CNDA00178"))$SSI.gam, ylab = "SSI")
 ```
 
+**Figure 4.** Série temporelle des débits du BV #0710 - Rivière aux outardes
 
-**Figure 5.** Série temporelle des débits du BV #0710 - Rivière aux outardes
-
-```{r}
-plot.ts((df %>% filter(id == "CNDA00178"))$Q50)
+```{r echo=FALSE, out.width="80%"}
+plot.ts((df %>% filter(id == "CNDA00178"))$Q50, ylab = "Débit")
 
 ```
 
+\newpage
 
 Une autre possibilité est la suivante, tirée d'un courriel envoyé à Audrey concernant la série temporelle ci-haut:
 
@@ -132,12 +131,30 @@ Une autre possibilité est la suivante, tirée d'un courriel envoyé à Audrey c
 
 \
 
+
+La figure 5 montre un exemple de ce que je veux dire par "le gros évènement va venir englober plusieurs petits et tous les mettre sous le même identifiant."
+
+Dans ce cas-ci, 2 évènements ont ce problème: le jaune d'une longueur maximale de 44 mois et le bleu de 27 mois.
+
+**Figure 5.** Exemple des problèmes causés par un évènement de longueur irréaliste (BV #0710).
+
+```{r echo=FALSE, out.width="90%"}
+gg_vistime((events.df %>% filter (BV == "0710"))[1:500,], 
+           col.start = "start", col.end = "end", col.group = "id",
+           col.event = "duration", col.color = "event.id")
+```
+
+Pour ces deux cas, on peut voir que dans les tronçons du haut, on a 2 à 5 évènements de sécheresse distinctifs qui se voit tous attribué le même identifiant (même couleur) due au gros évènement (44 pour le jaune, 27 pour le bleu) qui les englobe. Il semble plus réaliste d'avoir plusieurs petites sécheresse qu'une très grande. Dans tous les cas, je dois trouver un moyen de les séparer ou bien de sélectionner la situation la plus réaliste. Ce problème m'empêche aussi d'utiliser les même identifiants à l'éqchelle du Québec, puisque les overlaps seraient encore plus grands.
+
+\
+
 Une note finale:
-Même dans les grands BVs, sérieusement, les séries des tronçons se ressemblent beaucoup. Par exemple, ci-dessous le # 0621, avec 208 tronçons. Il y a beaucoup de variabilité au niveau de la magnitude des SSIs, mais au niveau temporelle les évènements tombent bien ensemble. Je pense que donc que la prédiction que les évènements sévères sont généralisés au BV et que les plus faible sont plus dispersés fait du sens (Hypothèse 1, voir document google docs: "2023-02-16_hypothese-prediction.docx").
+Même dans les grands BVs, les séries des tronçons se ressemblent beaucoup. Par exemple, ci-dessous le # 0621, avec 208 tronçons. Il y a beaucoup de variabilité au niveau de la magnitude des SSIs, mais au niveau temporelle les évènements tombent bien ensemble. Je pense que donc que la prédiction que les évènements sévères sont généralisés au BV et que les plus faible sont plus dispersés fait du sens (Hypothèse 1, voir document google docs: "2023-02-16_hypothese-prediction.docx").
+
 
 **Figure 6.** Série temporelle des débits du BV #0621 - Rivière Mistassini
 
-```{r}
+```{r echo=FALSE}
 
 bv <-  621
 
@@ -146,7 +163,7 @@ bv <-  621
     BV.id <- max((df %>% filter(BV == bv))$BV)
     
 ggplot(df %>% filter(BV == bv))+
-      geom_line(aes( x = timestamp, y = SSI.gam, group = id, col = d.area),alpha = .5)+
+      geom_line(aes( x = timestamp, y = SSI.gam, group = id, col = d.area),alpha = .3)+
       theme_classic() + scale_color_continuous(type = "viridis")+
       labs( title = paste("BV:",BV.id,", ",n.sect," tronçons, ",d.area.BV," km2", sep = ""))
 ```
