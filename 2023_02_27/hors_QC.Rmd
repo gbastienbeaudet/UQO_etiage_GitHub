@@ -1,0 +1,74 @@
+---
+title: "Résumé semaine du 27 février 2023 - données Hors Québec"
+author: "gbbeaudet"
+date: "31/02/2023"
+output:
+  pdf_document
+---
+\newpage
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.pos = "H", out.extra = "")
+par(mar = c(.1, .1, .1, .1))
+#out.width="90%"
+```
+
+```{r libraries, include=FALSE}
+library(ggplot2)
+library(tidyverse)
+library(sf)
+
+```
+
+3. Données hors Québec
+
+```{r data, include=FALSE, cache=TRUE}
+events.df <- read.csv("/Users/smokeyhandz/Desktop/UQO_etiage/R_proj/Drought_events/data/drought_event_list_with_id.csv")
+
+BV.pol.all <- st_read("/Users/smokeyhandz/Desktop/GIS_BV_QC/CE_bassins_multi_sqlite.sqlite")
+BV.pol.all <- BV.pol.all %>% filter(as.numeric(no_région_hydrographique) < 9 )
+
+BV.pol <- BV.pol.all %>% filter(str_detect(no_cours_d_eau, "0000"))
+BV.pol$no_cours_d_eau <- substr(BV.pol$no_cours_d_eau,1,4)
+
+events.df.summarised <- 
+  events.df %>% group_by(BV) %>% summarise(sev = median(severity), sd.sev = sd(severity), CV.sev = sd.sev/mean(severity),
+                                           dur = median(duration), sd.d = sd(duration), CV.d = sd.d/mean(duration),
+                                           n.DE.BV = mean(n.DE.BV))
+
+events.df.summarised <- 
+  left_join(BV.pol %>% dplyr::select(BV = no_cours_d_eau, GEOMETRY), events.df.summarised)
+
+events.df.summarised <- na.omit(events.df.summarised)
+
+sections.pol <- st_read("/Users/smokeyhandz/Desktop/GIS_BV_QC/atlashydroclimatique_2022_SHP/AtlasHydroclimatique_2022.shp")
+sections.pol$BV <- substr(sections.pol$BVPRIMAIRE,1,4)
+
+df <- read.csv("/Users/smokeyhandz/Desktop/UQO_etiage/R_proj/BV_select/data/SSI_horsQC.csv")
+
+horsQC_map <- 
+  left_join(df,
+            sections.pol %>% select(TRONCON,geometry,BVPRIMAIRE),
+            by = c("id" = "TRONCON")
+)
+
+section.list <- unique(df$id)
+
+Radmin.pol <- st_read("/Users/smokeyhandz/Desktop/GIS_BV_QC/Index_GRHQ/Index_GRHQ.shp")
+Radmin.pol$Bloc <- substr(Radmin.pol$Bloc,1,2)
+
+Radmin.pol <- Radmin.pol %>% filter(as.numeric(Bloc)<9)
+```
+
+```{r echo=FALSE}
+
+  ggplot( sections.pol %>% filter(TRONCON %in% section.list))+
+    geom_sf(aes(geometry = geometry))+
+    geom_sf(data = events.df.summarised, aes(geometry = GEOMETRY), fill = NA)
+
+  ggplot(sections.pol %>% filter(TRONCON %in% section.list))+
+    geom_sf(aes(geometry = geometry))+
+    geom_sf(data = Radmin.pol, aes(geometry = geometry), fill = NA)
+
+```
+
+
