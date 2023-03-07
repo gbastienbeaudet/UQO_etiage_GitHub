@@ -1,0 +1,328 @@
+---
+title: "Résumé semaine du 27 février 2023"
+author: "gbbeaudet"
+date: "31/02/2023"
+output:
+  pdf_document
+---
+\newpage
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.pos = "H", out.extra = "")
+par(mar = c(.1, .1, .1, .1))
+#out.width="90%"
+```
+
+```{r libraries, include=FALSE}
+library(ggplot2)
+library(tidyverse)
+library(sf)
+library(fitdistrplus)
+
+```
+
+# ANALYSES EFFECTUÉES CETTE SEMAINE:
+
+1. Visualisation du jeux de données à l'échelle du Québec
+2. Identification des tronçons avec déviations problématiques
+3. Données hors Québec
+
+________________________________________________________________________________________________________________________
+
+#### 1. Visualisation du jeux de données à l'échelle du Québec
+
+\
+
+```{r inter_BV_data, include=FALSE, cache=TRUE}
+events.df <- read.csv("/Users/smokeyhandz/Desktop/UQO_etiage/R_proj/Drought_events/data/drought_event_list_with_id.csv")
+
+BV.pol.all <- st_read("/Users/smokeyhandz/Desktop/GIS_BV_QC/CE_bassins_multi_sqlite.sqlite")
+BV.pol.all <- BV.pol.all %>% filter(as.numeric(no_région_hydrographique) < 9 )
+
+BV.pol <- BV.pol.all %>% filter(str_detect(no_cours_d_eau, "0000"))
+BV.pol$no_cours_d_eau <- substr(BV.pol$no_cours_d_eau,1,4)
+
+events.df.summarised <- 
+  events.df %>% group_by(BV) %>% summarise(sev = median(severity), sd.sev = sd(severity), CV.sev = sd.sev/mean(severity),
+                                           dur = median(duration), sd.d = sd(duration), CV.d = sd.d/mean(duration),
+                                           n.DE.BV = mean(n.DE.BV))
+
+events.df.summarised <- 
+  left_join(BV.pol %>% dplyr::select(BV = no_cours_d_eau, GEOMETRY), events.df.summarised)
+
+events.df.summarised <- na.omit(events.df.summarised)
+```
+
+##### 1.1 Comparaison entre les Bassins Versants
+
+Ici, les métriques sont spécifiques à chaque BV. Ils sont donc l'aggrégation des tous les évènements de tous les tronçons dans le BV concercé, de toute la période à l'étude (1970-2022).
+
+\
+
+**Figures 1.1-1.3.** Sévérité des évènements de sécheresse au Québec méridional. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE,cache=TRUE}
+  ggplot(events.df.summarised) +
+    geom_sf(aes(geometry = GEOMETRY, fill = sev),size = .05)+
+    scale_fill_distiller(palette = "YlOrBr")+ggtitle("Figure 1.1 - Médiane des sévérités")+
+    theme(legend.title=element_blank())
+
+  ggplot(events.df.summarised) +
+    geom_sf(aes(geometry = GEOMETRY, fill = sd.sev),size = .05)+
+    scale_fill_distiller()+ggtitle("Figure 1.2 - Écart-types des sévérités")+
+    theme(legend.title=element_blank())
+
+  ggplot(events.df.summarised) +
+    geom_sf(aes(geometry = GEOMETRY, fill = abs(CV.sev)),size = .05)+
+    scale_fill_distiller(palette = "GrYl")+ggtitle("Figure 1.3 - Coefficents de variation des sévérités")+
+    theme(legend.title=element_blank())
+```
+
+\newpage
+
+**Figures 2.1-2.3.** Durée des évènements de sécheresse au Québec méridional.
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, cache=TRUE}
+  ggplot(events.df.summarised) +
+    geom_sf(aes(geometry = GEOMETRY, fill = dur),size = .05)+
+    scale_fill_distiller(palette = "YlOrBr")+ggtitle("Figure 2.1 - Médiane des durées")+
+    theme(legend.title=element_blank())
+
+  ggplot(events.df.summarised) +
+    geom_sf(aes(geometry = GEOMETRY, fill = sd.d),size = .05)+
+    scale_fill_distiller()+ggtitle("Figure 2.2 - Écart-types des durées")+
+    theme(legend.title=element_blank())
+
+  ggplot(events.df.summarised) +
+    geom_sf(aes(geometry = GEOMETRY, fill = CV.d),size = .05)+
+    scale_fill_distiller(palette = "GrYl")+ggtitle("Figure 2.3 - Coefficients de varation des durées")+
+    theme(legend.title=element_blank())
+```
+
+\
+
+```{r intra_BV_data, include=FALSE, cache=TRUE}
+
+sections.pol <- st_read("/Users/smokeyhandz/Desktop/GIS_BV_QC/atlashydroclimatique_2022_SHP/AtlasHydroclimatique_2022.shp")
+sections.pol$BV <- substr(sections.pol$BVPRIMAIRE,1,4)
+sections.pol <- sections.pol %>% filter(MASQUE == "SHOWN")
+
+events.df.troncons <- 
+  left_join(sections.pol %>% dplyr::select(TRONCON,SUPERFICIE,geometry),
+            events.df %>% group_by(BV,id) %>% summarise (dur = median(duration), sd.d = sd(duration), CV.d = sd.d/mean(duration),
+                                                         sev = median(severity), sd.sev = sd(severity), CV.sev = sd.sev/mean(severity)),
+            by = c("TRONCON" = "id"))
+
+events.df.summarised <- 
+  events.df %>% group_by(BV) %>% summarise(sev = median(severity), sd.sev = sd(severity), CV.sev = sd.sev/mean(severity),
+                                           dur = median(duration), sd.d = sd(duration), CV.d = sd.d/mean(duration),
+                                           n.DE.BV = mean(n.DE.BV))
+
+events.df.summarised <- 
+  left_join(BV.pol %>% dplyr::select(BV = no_cours_d_eau,niveau, GEOMETRY),events.df.summarised,)
+
+events.df.summarised <- na.omit(events.df.summarised)
+```
+
+\newpage
+
+##### 1.2 Visualisation des tronçons. 
+
+Ici, les métriques sont spécifiques aux tronçons. Ils sont l'aggrégation des tous les évènements au sein du tronçon concercé, sur toute la période à l'étude (1970-2022).
+
+\
+
+**Figures 3.1 - 3.3.** Sévérité des évènements de sécheresse au Québec méridional - tronçons
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, cache=TRUE}
+  ggplot()+
+    geom_sf(data = events.df.summarised, aes (geometry = GEOMETRY), size = .2, fill = NA, col = "black")+
+    geom_sf(data = events.df.troncons, aes(geometry = geometry, col = sev), size = .4)+
+    scale_color_distiller(palette = "YlOrBr")+ggtitle("Figure 3.1 - Médiane des sévérités")+
+    theme(legend.title=element_blank())
+
+  ggplot()+
+    geom_sf(data = events.df.summarised, aes (geometry = GEOMETRY), size = .2, fill = NA, col = "black")+
+    geom_sf(data = events.df.troncons, aes(geometry = geometry, col = sd.sev), size = .4)+
+    scale_color_distiller()+ggtitle("Figure 3.2 - Écart-types des sévérités")+
+    theme(legend.title=element_blank())
+
+  ggplot()+
+    geom_sf(data = events.df.summarised, aes (geometry = GEOMETRY), size = .2, fill = NA, col = "black")+
+    geom_sf(data = events.df.troncons, aes(geometry = geometry, col = CV.sev), size = .4)+
+    scale_color_distiller(palette = "Gr")+ggtitle("Figure 3.3 - Coefficients de variation des sévérités")+
+    theme(legend.title=element_blank())
+```
+
+\newpage
+
+**Figures 4.1 - 4.3.** Durée des évènements de sécheresse au Québec méridional - tronçons
+
+```{r echo=FALSE,message=FALSE, warning=FALSE,cache=TRUE}
+  ggplot()+
+    geom_sf(data = events.df.summarised, aes (geometry = GEOMETRY), size = .2, fill = NA, col = "black")+
+    geom_sf(data = events.df.troncons, aes(geometry = geometry, col = dur), size = .4)+
+    scale_color_distiller(palette = "YlOrBr")+ggtitle("Figure 4.1 - Médiane des durées")+
+    theme(legend.title=element_blank())
+
+  ggplot()+
+    geom_sf(data = events.df.summarised, aes (geometry = GEOMETRY), size = .2, fill = NA, col = "black")+
+    geom_sf(data = events.df.troncons, aes(geometry = geometry, col = sd.d), size = .4)+
+    scale_color_distiller()+ggtitle("Figure 4.2 - Écart-types des durées")+
+    theme(legend.title=element_blank())
+
+  ggplot()+
+    geom_sf(data = events.df.summarised, aes (geometry = GEOMETRY), size = .2, fill = NA, col = "black")+
+    geom_sf(data = events.df.troncons, aes(geometry = geometry, col = CV.d), size = .4)+
+    scale_color_distiller(palette = "Gr")+ggtitle("Figure 4.3 - Coefficients de variation des durées")+
+    theme(legend.title=element_blank())
+```
+
+
+
+
+```{r data, include=FALSE}
+bp.df <- read.csv("/Users/smokeyhandz/Desktop/UQO_etiage/R_proj/Drought_events/data/bp_df_V2.csv")
+```
+```{r include=FALSE, cache=TRUE}
+
+df <- read.csv("/Users/smokeyhandz/Desktop/UQO_etiage/R_proj/BV_select/data/df_SSI_full_accum1.csv")
+df$timestamp <-  as.Date(df$timestamp)
+df$SSI.gam[df$SSI.gam<(-3)] <- (-3) # cap SSI values at 3 and -3
+df$SSI.gam[df$SSI.gam>3] <- 3
+
+ts <- ts((df %>% filter(id == "CNDA00178"))$SSI.gam, start = c(1970,1), frequency = 12 )
+
+# get best model: input is a list of BIC values
+opt_bpts <- function(x) {
+  #x = bpts_sum$RSS["BIC",]
+  n <- length(x)
+  lowest <- vector("logical", length = n-1)
+  lowest[1] <- FALSE
+  for (i in 2:n) {
+    lowest[i] <- x[i] <= min (x[-1])  }
+  out <- as.integer(names(x)[lowest])
+  return(out)
+}
+
+```
+
+#### 2. Identification des tronçons avec déviations problématiques
+
+Des déviations problématiques sur les séries temporelles de certains tronçons ont été identifiés dans les dernières semaines, causant des évènements de longueurs irréalistes. Voici un exemple qui décrit la méthode utilisée pour détecter et exclure ces tronçons.
+
+
+```{r message=FALSE, warning=FALSE}
+library(strucchange) 
+# Package pour identifier des "breakpoints" 
+# dans des régressions ou des séries temporelles
+```
+
+
+##### Troncon CDNA00178 sur la Côte-Nord, dans le Bassin Versant de la rivière aux Outardes.
+
+```{r echo=FALSE}
+plot(ts)
+```
+
+Les tests utilisés (OLS-CUSUM et Pearson F) détectent si au moins un "breakpoint" est présent dans la série temporelle, un breakpoint étant identifié comme un changement de moyenne entre 2 sections des séries temporelles. 
+
+```{r echo=FALSE}
+ocus <- efp(ts ~ 1, type = "OLS-CUSUM") 
+op <- par(mfrow = c(1,1))
+
+sctest(ocus) # OLS CUSUM test
+
+fs <- Fstats(ts ~ 1)
+sctest(fs) # Pearson F test
+
+```
+
+Le nombre de breakpoints optimal est identifié à l'aide de deux métriques, ie, "Bayesian Information Criterion (BIC)" et "Residual Sum oif Squares (RRS)".
+
+On obtient ensuite les dates des breakpoints avec leurs intervals de confiance:
+
+```{r echo=FALSE}
+bp <- breakpoints(ts~1)
+bpts_sum <- summary(bp)
+opt_brks <- opt_bpts(bpts_sum$RSS["BIC",])
+ci <- stats::confint(bp,opt_brks)
+
+plot(ts)
+lines(ci)
+```
+
+\newpage 
+
+On peut finalement obtenir les déviations, que l'on peut visualiser sur le graphique suivant. La ligne verte est la moyenne de la série temporelle originale, et les lignes bleues sont les déviations des sections séparées.
+
+```{r echo=FALSE}
+#null model
+fm0 <- lm(ts~1)
+coef(fm0) # should always be around 0 in our case
+
+#breakpoint model: outputs changes in mean
+bp.fac <- breakfactor(bp, breaks = opt_brks)
+fm1 <- lm(ts ~ bp.fac - 1)
+coef(fm1)
+
+plot(ts)
+lines(ci)
+lines(ts(fitted(fm0), start = c(1970,1), frequency = 12 ), col = "green")
+lines(ts(fitted(fm1), start = c(1970,1), frequency = 12 ), col = "blue")
+lines(bp)
+
+```
+
+Pour l'exclusion des tronçons avec de trop grandes déviations, 2 indicateurs ont été considérés:
+
+* 1. max_fm1: La plus grande déviation entre une section et la moyenne générale ( fragment #3 )
+* 2. max_dev: La plus grande différence de moyenne entre deux sections conjointes ( fragment #3 - #4 )
+
+Dans les deux cas, nous utiliserions une valeur seuil au dessus de laquelle le tronçon serait exclus. Ce seuil serait définie comme le 95ème percentile de la distribution théorique des indicateurs.
+
+Les deux distributions se rapproche d'une distribution théorique Gamma (peut-être Weibull), mais semblent être bimodales:
+
+```{r}
+hist(bp.df$max_dev)
+descdist(bp.df$max_dev)
+hist(bp.df$max_fm1)
+descdist(bp.df$max_fm1)
+
+```
+
+Si ont "fit" une distribution Gamma à nos deux indicateurs, ont obtient un fit assez bien:
+
+```{r message=FALSE, warning=FALSE}
+dev.gam <- fitdist(bp.df$max_dev, distr = "gamma")
+plot(dev.gam)
+
+fm1.gam <- fitdist(bp.df$max_fm1, distr = "gamma")
+plot(fm1.gam)
+```
+
+On obtient alors les valeurs seuils suivantes:
+
+* max_dev: 0.76
+* max_fm1: 1.12
+
+Le "max_dev" exclu 496 tronçons et le max_fm1, 464. Ceux-ci ne sont pas exactement les mêmes tronçons. Si on inclu les deux critères ensemble, 587 tronçons sont exclus.
+
+\textcolor{red}{Au final, cette discrimination des tronçons permet d'exclure quelques-uns des évènements trop longs, mais il en reste quand même plusieurs. On retire 109 des 318 évènements d'une durée de 30 mois et plus. Par contre, on voit aussi que plusieurs évènements de longeurs normales sont éliminés:}
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+t <- left_join(bp.df,
+               events.df %>% dplyr::group_by(id) %>% 
+                 dplyr::summarise(duration=mean(duration),severity=mean(severity)))
+
+plot(t$duration,t$max_dev, main = "Moyenne des durées par troncon")
+abline(h = 1.12, col = "red")
+
+t2 <- left_join(bp.df,events.df)
+
+plot(t2$duration,t2$max_dev, main = "Tous les tronçons")
+abline(h = 1.12, col = "red")
+
+```
+
+

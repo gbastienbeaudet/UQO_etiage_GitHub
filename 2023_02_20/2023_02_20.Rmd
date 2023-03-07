@@ -21,8 +21,8 @@ library(vistime)
 ```
 
 ```{r load_data, include=FALSE}
-df <- read.csv("/Users/smokeyhandz/Desktop/UQO_etiage/R_proj/UQO_etiage_GitHub/GitHub_markdown_data/resume_20feb.csv")
-events.df <- read.csv("/Users/smokeyhandz/Desktop/UQO_etiage/R_proj/UQO_etiage_GitHub/GitHub_markdown_data/events_df.csv")
+df <- read.csv("/Users/smokeyhandz/Desktop/UQO_etiage/R_proj/UQO_etiage_GitHub/GitHub_markdown_data/20_fevrier/resume_20feb.csv")
+events.df <- read.csv("/Users/smokeyhandz/Desktop/UQO_etiage/R_proj/UQO_etiage_GitHub/GitHub_markdown_data/20_fevrier/events_df.csv")
 ```
 
 # ANALYSES EFFECTUÉES CETTE SEMAINE:
